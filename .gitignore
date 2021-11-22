@@ -2,3 +2,4 @@
 /data
 /PyTorch_CIFAR10
 *.zip
+*.pyc
