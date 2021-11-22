@@ -1,5 +1,7 @@
 /cifar10_models
 /data
 /PyTorch_CIFAR10
+/__pycache__
+/.ipynb_checkpoints
 *.zip
 *.pyc
