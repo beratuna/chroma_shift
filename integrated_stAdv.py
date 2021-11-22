@@ -77,7 +77,7 @@ def apply_flow (img, flow_layer, attack_YUV):
     return flowed_img
 
 
-def UVAttack(images, labels, net, H, W, max_iteration, learning_rate, arrow_size, attack_YUV, target=None, num_random_init=1, init_method='normal', loss_type="ce", smoothness=0, rand_param=1, minimize=False, mask_type="None"):
+def UVAttack(images, labels, net, H, W, max_iteration, learning_rate, arrow_size, attack_YUV, target=None, num_random_init=1, init_method='normal', loss_type="ce", smoothness=0, rand_param=1, minimize=False, mask_type="None", pixel_percent=70):
     #already false prediction
     if(target == None and torch.argmax(torch.nn.functional.softmax(net(images), dim=1), axis=1) != labels):
         return images, 0, 0
@@ -109,7 +109,6 @@ def UVAttack(images, labels, net, H, W, max_iteration, learning_rate, arrow_size
             elif mask_type == "var_weight":
                 flowed_img_batch = images + (flowed_img_batch - images) * variance_map(images, threshold=0)
             elif mask_type == "grad":
-                pixel_percent = 70
                 flowed_img_batch = images + (flowed_img_batch - images) * grad_mask(images, labels, net, pixel_percent)
             out = net(flowed_img_batch)
             
@@ -178,7 +177,7 @@ def cw_loss(logits, label, is_targeted=False, confidence=0):
     return loss
 
     
-def overall_testset_accuracy(wb, log_file, dataset_type="CIFAR10", iteration=100, learning_rate=0.1, arrow_size=10, target=None, attack_YUV="UV only", color_threshold=0, max_init=1, init_method='normal', network="resnet50", loss_type="ce", smoothness=0, rand_param=1, minimize=False, mask_type="None"):
+def overall_testset_accuracy(wb, log_file, dataset_type="CIFAR10", iteration=100, learning_rate=0.1, arrow_size=10, target=None, attack_YUV="UV only", color_threshold=0, max_init=1, init_method='normal', network="resnet50", loss_type="ce", smoothness=0, rand_param=1, minimize=False, mask_type="None", pixel_percent=70):
     
     global device
     if(dataset_type=="CIFAR10"):
@@ -262,7 +261,7 @@ def overall_testset_accuracy(wb, log_file, dataset_type="CIFAR10", iteration=100
         for i in range(images.shape[0]):
             if(img_clrfl[i]*255 > color_threshold):
                 images, labels = images.to(device), labels.to(device)
-                adv_img, it_count, init_count = UVAttack(images, labels, net, H, W, iteration, learning_rate, arrow_size, attack_YUV, target=target, num_random_init=max_init, init_method=init_method, loss_type=loss_type, smoothness=smoothness, rand_param=rand_param, minimize=minimize, mask_type=mask_type)
+                adv_img, it_count, init_count = UVAttack(images, labels, net, H, W, iteration, learning_rate, arrow_size, attack_YUV, target=target, num_random_init=max_init, init_method=init_method, loss_type=loss_type, smoothness=smoothness, rand_param=rand_param, minimize=minimize, mask_type=mask_type, pixel_percent=pixel_percent)
                 results = torch.argmax(torch.nn.functional.softmax(net(adv_img), dim=1), axis=1)
 
                 with torch.no_grad():
@@ -356,6 +355,7 @@ parser.add_argument('--smoothness', default=0.0, type=float)
 parser.add_argument('--rand_param', default=1.0, type=float)
 parser.add_argument('--minimize', default=False, type=bool)
 parser.add_argument('--mask_type', default="None")
+parser.add_argument('--pixel_percent', default=70, type=int)
 
 
 args = parser.parse_args()
@@ -377,7 +377,8 @@ loss_type = args.loss_type
 smoothness = args.smoothness
 rand_param=args.rand_param
 minimize=args.minimize
-minimize=args.mask_type
+mask_type=args.mask_type
+pixel_percent=args.pixel_percent
 
 print(args)
 
@@ -404,6 +405,7 @@ if log_file is not None:
     sht.write(param_idx, 12, 'Random Init parameter')
     sht.write(param_idx, 13, 'Minimization')
     sht.write(param_idx, 14, 'Mask Type')
+    sht.write(param_idx, 15, 'Pixel Percent')
     
     
     sht.write(param_idx+1, 0, dataset_type)
@@ -421,6 +423,7 @@ if log_file is not None:
     sht.write(param_idx+1, 12, rand_param)
     sht.write(param_idx+1, 13, minimize)
     sht.write(param_idx+1, 14, mask_type)
+    sht.write(param_idx+1, 15, pixel_percent)
 
     sht.write(0, 0, 'Learning Rate')
     sht.write(0, 1, 'Fooling Rate')
@@ -439,7 +442,7 @@ if log_file is not None:
 
 initilize_data(dataset_type=dataset_type, batch_size=1, sample=total_img_amount)
 
-fooling_rt, mean_it_count, elm_img_count, ssim, lpips, dists, l0, l1, l2, linf, mean_init = overall_testset_accuracy(wb=wb, log_file=log_file, dataset_type=dataset_type, iteration=iteration, learning_rate=lr, arrow_size=arr_size, target=target, attack_YUV=attack_type, color_threshold=clr_thresh, max_init=max_init_count, init_method=init_method, network=network, loss_type=loss_type, smoothness=smoothness, rand_param=rand_param, minimize=minimize, mask_type=mask_type)
+fooling_rt, mean_it_count, elm_img_count, ssim, lpips, dists, l0, l1, l2, linf, mean_init = overall_testset_accuracy(wb=wb, log_file=log_file, dataset_type=dataset_type, iteration=iteration, learning_rate=lr, arrow_size=arr_size, target=target, attack_YUV=attack_type, color_threshold=clr_thresh, max_init=max_init_count, init_method=init_method, network=network, loss_type=loss_type, smoothness=smoothness, rand_param=rand_param, minimize=minimize, mask_type=mask_type, pixel_percent=pixel_percent)
 
 
 
